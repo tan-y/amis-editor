@@ -39,10 +39,17 @@ export default inject('store')(
     history,
     match
   }: {store: IMainStore} & RouteComponentProps<{id: string}>) {
-    const index: number = parseInt(match.params.id, 10);
+    const pageId: string = match.params.id;
+    const index: number = store.pages.findIndex(page => page.id === pageId);
     const curLanguage = currentLocale(); // 获取当前语料类型
     const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+    // 如果页面不存在，跳转到首页
+    if (index === -1) {
+      history.replace('/');
+      return null;
+    }
 
     if (index !== currentIndex) {
       currentIndex = index;
@@ -171,6 +178,14 @@ export default inject('store')(
               }}
             >
               {store.preview ? '编辑' : '预览'}
+            </div>
+            <div
+              className="header-action-btn m-1"
+              onClick={() => {
+                history.push(`/preview/${pageId}`);
+              }}
+            >
+              全屏预览
             </div>
             {!store.preview && (
               <div className={`header-action-btn exit-btn`} onClick={exit}>

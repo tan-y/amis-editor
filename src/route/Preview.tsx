@@ -151,7 +151,10 @@ export default inject('store')(
                 className={'navbtn fa fa-pencil'}
                 onClick={(e: React.MouseEvent) => {
                   e.preventDefault();
-                  history.push(`/edit/${paths.indexOf(link.path)}`);
+                  const page = store.pages.find(p => `/${p.path}` === link.path);
+                  if (page) {
+                    history.push(`/edit/${page.id}`);
+                  }
                 }}
               />
             );

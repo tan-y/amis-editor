@@ -12,6 +12,7 @@ import {IMainStore} from '../store/index';
 import '../renderer/MyRenderer';
 const Preview = React.lazy(() => import('./Preview'));
 const Editor = React.lazy(() => import('./Editor'));
+const PagePreview = React.lazy(() => import('./PagePreview'));
 
 export default observer(function ({store}: {store: IMainStore}) {
   // 动态重定向到第一个可用页面，如果没有页面则显示默认消息
@@ -33,6 +34,7 @@ export default observer(function ({store}: {store: IMainStore}) {
           <Switch>
             <Redirect to={getDefaultRedirect()} from={`/`} exact />
             <Route path="/edit/:id" component={Editor} />
+            <Route path="/preview/:id" component={PagePreview} />
             <Route component={Preview} />
           </Switch>
         </React.Suspense>
