@@ -41,7 +41,7 @@ export default inject('store')(
   }: {store: IMainStore} & RouteComponentProps<{id: string}>) {
     const index: number = parseInt(match.params.id, 10);
     const curLanguage = currentLocale(); // 获取当前语料类型
-    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
     if (index !== currentIndex) {
