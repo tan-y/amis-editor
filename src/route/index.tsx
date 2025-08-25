@@ -14,6 +14,14 @@ const Preview = React.lazy(() => import('./Preview'));
 const Editor = React.lazy(() => import('./Editor'));
 
 export default observer(function ({store}: {store: IMainStore}) {
+  // 动态重定向到第一个可用页面，如果没有页面则显示默认消息
+  const getDefaultRedirect = () => {
+    if (store.pages.length > 0) {
+      return `/${store.pages[0].path}`;
+    }
+    return '/welcome'; // 当没有页面时的默认路径
+  };
+
   return (
     <Router>
       <div className="routes-wrapper">
@@ -23,7 +31,7 @@ export default observer(function ({store}: {store: IMainStore}) {
           fallback={<Spinner overlay className="m-t-lg" size="lg" />}
         >
           <Switch>
-            <Redirect to={`/hello-world`} from={`/`} exact />
+            <Redirect to={getDefaultRedirect()} from={`/`} exact />
             <Route path="/edit/:id" component={Editor} />
             <Route component={Preview} />
           </Switch>

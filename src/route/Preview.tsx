@@ -1,12 +1,24 @@
 import React from 'react';
 import {observer, inject} from 'mobx-react';
 import {IMainStore} from '../store';
-import {Button, AsideNav, Layout, confirm} from 'amis';
+import {Button, AsideNav, Layout, confirm, Spinner} from 'amis';
 import {RouteComponentProps, matchPath, Switch, Route} from 'react-router';
 import {Link} from 'react-router-dom';
 import NotFound from './NotFound';
 import AMISRenderer from '../component/AMISRenderer';
 import AddPageModal from '../component/AddPageModal';
+
+// 创建一个观察者组件来渲染页面内容
+const PageRenderer = observer(
+  ({store, path}: {store: IMainStore; path: string}) => {
+    // 从路径中去掉开头的斜杠进行匹配
+    const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+    const page = store.pages.find(p => p.path === cleanPath);
+    if (!page) return null;
+
+    return <AMISRenderer schema={page.schema} />;
+  }
+);
 
 function isActive(link: any, location: any) {
   const ret = matchPath(location?.pathname, {
@@ -41,6 +53,7 @@ export default inject('store')(
               <Button
                 size="sm"
                 level="info"
+                disabled={store.loading}
                 onClick={() => store.setAddPageIsOpen(true)}
               >
                 新增页面
@@ -181,16 +194,43 @@ export default inject('store')(
       );
     }
 
-    function handleConfirm(value: {label: string; icon: string; path: string}) {
-      store.addPage({
-        ...value,
-        schema: {
-          type: 'page',
-          title: value.label,
-          body: '这是你刚刚新增的页面。'
-        }
-      });
-      store.setAddPageIsOpen(false);
+    async function handleConfirm(value: {
+      label: string;
+      icon: string;
+      path: string;
+    }) {
+      try {
+        await store.addPage({
+          ...value,
+          schema: {
+            type: 'page',
+            title: value.label,
+            body: '这是你刚刚新增的页面。'
+          }
+        });
+        store.setAddPageIsOpen(false);
+      } catch (error) {
+        // Error is already handled in store with notification
+      }
+    }
+
+    if (store.loading && store.pages.length === 0) {
+      return (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '100vh',
+            flexDirection: 'column'
+          }}
+        >
+          <Spinner size="lg" />
+          <div style={{marginTop: '16px', color: '#666'}}>
+            加载页面数据中...
+          </div>
+        </div>
+      );
     }
 
     return (
@@ -205,9 +245,43 @@ export default inject('store')(
             <Route
               key={item.id}
               path={`/${item.path}`}
-              render={() => <AMISRenderer schema={item.schema} />}
+              render={routeProps => (
+                <PageRenderer
+                  store={store}
+                  path={routeProps.location.pathname}
+                />
+              )}
             />
           ))}
+          <Route
+            path="/welcome"
+            render={() => (
+              <AMISRenderer
+                schema={{
+                  type: 'page',
+                  title: '欢迎使用 AMIS 编辑器',
+                  body: [
+                    {
+                      type: 'panel',
+                      title: '开始使用',
+                      body: [
+                        {
+                          type: 'html',
+                          html: `
+                            <div style="text-align: center; padding: 40px;">
+                              <h2>欢迎使用 AMIS 可视化编辑器</h2>
+                              <p style="color: #666; margin: 20px 0;">您还没有创建任何页面</p>
+                              <p style="color: #999;">点击右上角的"新增页面"按钮开始创建您的第一个页面</p>
+                            </div>
+                          `
+                        }
+                      ]
+                    }
+                  ]
+                }}
+              />
+            )}
+          />
           <Route component={NotFound} />
         </Switch>
         <AddPageModal

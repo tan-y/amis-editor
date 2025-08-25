@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useRef, useCallback, useEffect, useState} from 'react';
 import {Editor, ShortcutKey} from 'amis-editor';
 import {inject, observer} from 'mobx-react';
 import {RouteComponentProps} from 'react-router-dom';
@@ -41,20 +41,53 @@ export default inject('store')(
   }: {store: IMainStore} & RouteComponentProps<{id: string}>) {
     const index: number = parseInt(match.params.id, 10);
     const curLanguage = currentLocale(); // 获取当前语料类型
+    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
     if (index !== currentIndex) {
       currentIndex = index;
       store.updateSchema(store.pages[index].schema);
     }
 
-    function save() {
-      store.updatePageSchemaAt(index);
-      toast.success('保存成功', '提示');
+    async function save() {
+      // 清除防抖定时器
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+
+      try {
+        await store.updatePageSchemaAt(index);
+        setHasUnsavedChanges(false);
+      } catch (error) {
+        // Error is already handled in store with notification
+      }
     }
 
+    // 防抖保存函数
+    const debouncedSave = useCallback(async () => {
+      try {
+        await store.updatePageSchemaAt(index);
+        setHasUnsavedChanges(false);
+      } catch (error) {
+        // Error is already handled in store with notification
+      }
+    }, [store, index]);
+
     function onChange(value: any) {
+      // 立即更新本地状态
       store.updateSchema(value);
-      store.updatePageSchemaAt(index);
+      setHasUnsavedChanges(true);
+
+      // 清除之前的定时器
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
+      // 设置新的定时器，1秒后保存
+      saveTimeoutRef.current = setTimeout(() => {
+        debouncedSave();
+      }, 1000);
     }
 
     function changeLocale(value: string) {
@@ -63,8 +96,22 @@ export default inject('store')(
     }
 
     function exit() {
+      // 清理定时器
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
       history.push(`/${store.pages[index].path}`);
     }
+
+    // 组件卸载时清理定时器
+    useEffect(() => {
+      return () => {
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current);
+        }
+      };
+    }, []);
 
     return (
       <div className="Editor-Demo">
@@ -104,6 +151,17 @@ export default inject('store')(
               clearable={false}
               onChange={(e: any) => changeLocale(e.value)}
             />
+            {hasUnsavedChanges && (
+              <span
+                style={{
+                  color: '#f56565',
+                  fontSize: '12px',
+                  marginLeft: '8px'
+                }}
+              >
+                有未保存的更改...
+              </span>
+            )}
             <div
               className={`header-action-btn m-1 ${
                 store.preview ? 'primary' : ''

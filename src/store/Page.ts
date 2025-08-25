@@ -5,7 +5,10 @@ export const PageStore = types
     icon: '',
     path: '',
     label: '',
-    schema: types.frozen({})
+    name: '', // API field
+    schema: types.frozen({}),
+    created_at: types.maybe(types.string),
+    updated_at: types.maybe(types.string)
   })
   .views(self => ({}))
   .actions(self => {
@@ -13,8 +16,19 @@ export const PageStore = types
       self.schema = schema;
     }
 
+    function updateName(name: string) {
+      self.name = name;
+      self.label = name; // keep label in sync for UI compatibility
+    }
+
+    function updatePath(path: string) {
+      self.path = path;
+    }
+
     return {
-      updateSchema
+      updateSchema,
+      updateName,
+      updatePath
     };
   });
 

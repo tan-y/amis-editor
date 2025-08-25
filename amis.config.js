@@ -57,6 +57,14 @@ module.exports = {
         ws: true,
         changeOrigin: true,
       },
+      /**
+       * 将API请求代理到本地8000端口
+       */
+      '/api_mocker': {
+        target: 'http://localhost:8000', // API服务器地址
+        ws: true,
+        changeOrigin: true,
+      },
     }
   },
   build: {
