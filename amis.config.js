@@ -40,7 +40,7 @@ module.exports = {
     NODE_ENV: 'development',
     ignoreNodeModules: false, // 打包时是否忽略 node_modules
     port: 80,
-    autoOpenBrowser: true,
+    autoOpenBrowser: false,
     assetsPublicPath: '/', // 设置静态资源的引用路径（根域名+路径）
     assetsSubDirectory: '',
     hostname: 'localhost',
