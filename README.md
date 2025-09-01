@@ -331,3 +331,133 @@ export interface PluginInterface extends Partial<BasicRendererInfo>, Partial<Bas
 }
 ```
 
+
+## 线上环境部署指南（使用 npmmirror）
+
+适用：将本项目构建为纯静态文件并部署到 Nginx、静态资源服务器或对象存储。
+
+### 1. 环境准备
+- 建议使用 Node.js LTS（≥16），npm（≥8）。
+
+### 2. 使用淘宝 npmmirror 安装依赖
+- 项目内局部设置（推荐，可保证只影响当前项目）：
+```bash
+echo "registry=https://registry.npmmirror.com" > .npmrc
+```
+
+- 一次性临时使用（CI 或本地临时安装）：
+```bash
+npm ci --registry=https://registry.npmmirror.com
+# 或
+npm i --registry=https://registry.npmmirror.com
+```
+
+- 全局设置（影响当前用户的所有项目，可选）：
+```bash
+npm config set registry https://registry.npmmirror.com
+```
+
+安装依赖（推荐使用 npm ci，基于 package-lock.json 固定版本）：
+```bash
+npm ci
+# 若首次安装遇到 lock 不匹配，可退而求其次：npm i
+```
+
+### 3. 生产构建
+```bash
+npm run build
+```
+构建完成后，产物默认输出到 `demo-6.11.0/` 目录（见 `amis.config.js -> build.assetsRoot`）。
+
+重要：请根据实际部署域名/路径，调整静态资源的公共路径 `assetsPublicPath`（见 `amis.config.js -> build.assetsPublicPath`）。例如：
+```js
+// amis.config.js（节选）
+build: {
+  // ...
+  assetsPublicPath: '/editor/' // 当前默认值：部署在 http://hostname/editor
+  // 若部署在根域名：
+  // assetsPublicPath: '/'
+  // 或部署在其他子路径：
+  // assetsPublicPath: '/your-sub-path/'
+}
+```
+提示：当前仓库默认将 `assetsPublicPath` 设为 `/editor/` 以匹配生产部署路径 `http://hostname/editor`；如你的路径不同，请相应调整。
+
+### 4. 部署到 Nginx（示例）
+假设将构建产物上传到服务器目录 `/var/www/amis-editor/demo-6.11.0`，Nginx 配置示例如下：
+```nginx
+server {
+  listen 80;
+  server_name your-domain.com;
+
+  root /var/www/amis-editor/demo-6.11.0;
+  index index.html;
+
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+
+  location ~* \.(js|css|png|jpg|jpeg|gif|svg|woff2?|ttf|map)$ {
+    expires 7d;
+    access_log off;
+  }
+}
+```
+
+若站点部署在子路径（例如 `https://your-domain.com/ae/`）：
+- 设置 `assetsPublicPath: '/ae/'` 或 `https://your-domain.com/ae/`；
+- Nginx 中 `location /ae/ { try_files ... }` 并将 `root` 指向构建目录；
+- 确保以斜杠结尾的公共路径，避免相对路径解析错误。
+
+### 5. 快速自检
+- 页面空白或 404：多为 `assetsPublicPath` 与实际访问路径不一致；
+- 静态资源 404：确认构建产物已完整上传且 Nginx `root` 指向正确目录；
+- 缓存导致样式/脚本未更新：尝试强刷或调整 Nginx 缓存策略；
+- 使用 GitHub Pages 子目录部署：将 `assetsPublicPath` 设置为对应子目录（以 `/子目录/` 结尾）。
+
+### 6. 后端 API 地址配置
+
+- 代码位置：`src/config/api.ts`（新增）。导出 `getApiBaseUrl()`，按以下优先级确定 API 基址：
+  1) 运行时配置：`window.__APP_CONFIG__.API_BASE_URL`
+  2) 自动推断：若当前路径以 `/editor` 开头，默认使用根路径 `'/'`；否则使用 `'/api_mocker'`（用于开发代理）。
+
+- 开发环境：通过 `amis.config.js -> dev.proxyTable` 代理 `'/api_mocker'` 到后端，例如：
+```js
+// amis.config.js（节选）
+dev: {
+  proxyTable: {
+    '/api_mocker': {
+      target: 'http://你的后端域名或IP:端口',
+      ws: true,
+      changeOrigin: true
+    }
+  }
+}
+```
+
+- 生产环境（与你的部署一致）：前端位于 `http://hostname/editor`，后端为同域根路径 `http://hostname`。
+  - 在此情况下，无需改代码或注入配置，默认会将 API 请求发往根路径 `/`。
+  - 如需自定义前缀或不同域名，可在最终 `index.html` 注入运行时配置覆盖：
+```html
+<script>
+  window.__APP_CONFIG__ = { API_BASE_URL: '/api' };
+</script>
+```
+或：
+```html
+<script>
+  window.__APP_CONFIG__ = { API_BASE_URL: 'https://api.yourdomain.com' };
+</script>
+```
+
+- 可选 Nginx 反代（如使用前缀 `/api`）：
+```nginx
+location /api/ {
+  proxy_pass http://hostname/;  # 转发到你的后端
+  proxy_set_header Host $host;
+  proxy_set_header X-Real-IP $remote_addr;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+}
+```
+
+- 跨域 & 凭证：代码默认 `withCredentials=true`。若跨域，后端需设置 `Access-Control-Allow-Credentials: true`，且 `Access-Control-Allow-Origin` 需为前端实际域名（不能为 `*`）。

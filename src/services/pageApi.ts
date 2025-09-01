@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getApiBaseUrl } from '../config/api';
 
 export interface PageData {
   id: number;
@@ -28,7 +29,7 @@ export interface ApiResponse<T = any> {
   code?: any;
 }
 
-const API_BASE_URL = '/api_mocker';
+const API_BASE_URL = getApiBaseUrl();
 
 class PageApiService {
   /**
