@@ -383,21 +383,27 @@ build: {
 ```
 提示：当前仓库默认将 `assetsPublicPath` 设为 `/editor/` 以匹配生产部署路径 `http://hostname/editor`；如你的路径不同，请相应调整。
 
-### 4. 部署到 Nginx（示例）
-假设将构建产物上传到服务器目录 `/var/www/amis-editor/demo-6.11.0`，Nginx 配置示例如下：
+### 4. 部署到 Nginx（挂载在 /editor 子路径示例）
+假设将构建产物上传到服务器目录 `/var/www/amis-editor/demo-6.11.0`，并且站点最终访问路径为 `http://hostname/editor`，Nginx 配置示例如下：
 ```nginx
 server {
   listen 80;
   server_name your-domain.com;
 
-  root /var/www/amis-editor/demo-6.11.0;
-  index index.html;
-
-  location / {
-    try_files $uri $uri/ /index.html;
+  # 可选：将 /editor 重定向到带尾斜杠的 /editor/
+  location = /editor {
+    return 301 /editor/;
   }
 
-  location ~* \.(js|css|png|jpg|jpeg|gif|svg|woff2?|ttf|map)$ {
+  # 静态资源与 SPA 路由（assetsPublicPath: /editor/）
+  location /editor/ {
+    alias /var/www/amis-editor/demo-6.11.0/;
+    index index.html;
+    try_files $uri $uri/ /editor/index.html;
+  }
+
+  # 可选：静态资源缓存
+  location ~* ^/editor/.*\.(js|css|png|jpg|jpeg|gif|svg|woff2?|ttf|map)$ {
     expires 7d;
     access_log off;
   }
