@@ -1,9 +1,9 @@
+import { Button, Spinner } from 'amis';
+import { inject, observer } from 'mobx-react';
 import React from 'react';
-import {observer, inject} from 'mobx-react';
-import {IMainStore} from '../store';
-import {RouteComponentProps} from 'react-router-dom';
-import {Button} from 'amis';
+import { RouteComponentProps } from 'react-router-dom';
 import AMISRenderer from '../component/AMISRenderer';
+import { IMainStore } from '../store';
 
 export default inject('store')(
   observer(function ({
@@ -15,9 +15,26 @@ export default inject('store')(
     const pageId: string = match.params.id;
     const page = store.pages.find(p => p.id === pageId);
 
-    // 如果页面不存在，跳转到首页
+    // 首次进入时 pages 可能尚未通过 API 加载完成，避免过早重定向
     if (!page) {
-      history.replace('/');
+      if (store.loading || store.pages.length === 0) {
+        return (
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              height: '100vh',
+              flexDirection: 'column'
+            }}
+          >
+            <Spinner size="lg" />
+            <div style={{ marginTop: '16px', color: '#666' }}>加载页面数据中...</div>
+          </div>
+        );
+      }
+      // 加载完成仍未找到对应页面，统一跳转到欢迎页
+      history.replace('/welcome');
       return null;
     }
 
