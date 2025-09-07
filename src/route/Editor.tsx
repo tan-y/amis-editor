@@ -1,14 +1,14 @@
-import React, {useRef, useCallback, useEffect, useState} from 'react';
-import {Editor, ShortcutKey} from 'amis-editor';
-import {inject, observer} from 'mobx-react';
-import {RouteComponentProps} from 'react-router-dom';
-import {toast, Select} from 'amis';
-import {currentLocale} from 'i18n-runtime';
-import {Icon} from '../icons/index';
-import {IMainStore} from '../store';
+import { Select, Spinner } from 'amis';
+import { Editor, ShortcutKey } from 'amis-editor';
+import { currentLocale } from 'i18n-runtime';
+import { inject, observer } from 'mobx-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { RouteComponentProps } from 'react-router-dom';
 import '../editor/DisabledEditorPlugin'; // 用于隐藏一些不需要的Editor预置组件
-import '../renderer/MyRenderer';
 import '../editor/MyRenderer';
+import { Icon } from '../icons/index';
+import '../renderer/MyRenderer';
+import { IMainStore } from '../store';
 
 let currentIndex = -1;
 
@@ -45,9 +45,26 @@ export default inject('store')(
     const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-    // 如果页面不存在，跳转到首页
+    // 首次进入时 pages 可能尚未通过 API 加载完成，避免过早重定向
     if (index === -1) {
-      history.replace('/');
+      if (store.loading || store.pages.length === 0) {
+        return (
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              height: '100vh',
+              flexDirection: 'column'
+            }}
+          >
+            <Spinner size="lg" />
+            <div style={{ marginTop: '16px', color: '#666' }}>加载页面数据中...</div>
+          </div>
+        );
+      }
+      // 加载完成仍未找到对应页面，统一跳转到欢迎页
+      history.replace('/welcome');
       return null;
     }
 
